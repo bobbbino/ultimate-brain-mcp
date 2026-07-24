@@ -92,6 +92,25 @@ Set these in `.env` (or pass via the MCP client config):
 | `UB_TASKS_DS_ID`, `UB_PROJECTS_DS_ID`, `UB_NOTES_DS_ID`, `UB_TAGS_DS_ID`, `UB_GOALS_DS_ID` | yes | Primary data source IDs |
 | `UB_TIMEZONE` | optional | IANA name (e.g. `Europe/London`). Used by `daily_review_snapshot` to resolve `now`/`today`/`tomorrow`. Falls back to `TZ`, then `UTC`. |
 | `UB_*_DS_ID` (Work Sessions, Books, etc.) | optional | Secondary data sources surfaced via `query_database` |
+| `UB_TRANSPORT` | optional | `stdio` (default) or `streamable-http` |
+| `UB_HOST`, `UB_PORT` | optional | Bind address for `streamable-http` (defaults `127.0.0.1:8000`; the container image defaults to `0.0.0.0:8000`) |
+
+## Docker
+
+The container image serves streamable-http on port 8000 by default:
+
+```bash
+docker run --rm -p 8000:8000 --env-file .env ghcr.io/bobbyhyam/ultimate-brain-mcp:latest
+```
+
+Point any streamable-http MCP client at `http://localhost:8000/mcp`. For a
+stdio client, override the transport:
+
+```bash
+docker run --rm -i --env-file .env -e UB_TRANSPORT=stdio ghcr.io/bobbyhyam/ultimate-brain-mcp:latest
+```
+
+Images are published on each release, tagged `X.Y.Z`, `X.Y`, and `latest`.
 
 ## Development
 

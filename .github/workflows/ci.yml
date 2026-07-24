@@ -31,3 +31,36 @@ jobs:
         # Default addopts deselects the `live` marker, so this needs no Notion
         # credentials. The live suite runs locally via `uv run pytest -m live`.
         run: uv run --frozen pytest
+
+  docker:
+    # Build the image and smoke-test streamable-http serving so Dockerfile rot
+    # is caught on PRs, not at release time. Dummy credentials suffice: the
+    # lifespan degrades gracefully on a bad token, so `initialize` still
+    # answers over HTTP without touching Notion.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build image
+        run: docker build -t ultimate-brain-mcp:ci .
+      - name: Smoke test (streamable-http initialize)
+        run: |
+          docker run -d --name ub-smoke -p 8000:8000 \
+            -e NOTION_INTEGRATION_SECRET=secret_dummy \
+            -e UB_TASKS_DS_ID=x -e UB_PROJECTS_DS_ID=x -e UB_NOTES_DS_ID=x \
+            -e UB_TAGS_DS_ID=x -e UB_GOALS_DS_ID=x \
+            ultimate-brain-mcp:ci
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /tmp/init.out -w '%{http_code}' -X POST http://localhost:8000/mcp \
+              -H 'Content-Type: application/json' \
+              -H 'Accept: application/json, text/event-stream' \
+              -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}' || true)
+            if [ "$code" = "200" ]; then
+              grep -q '"serverInfo"' /tmp/init.out
+              echo "initialize OK"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server never answered initialize; container logs:" >&2
+          docker logs ub-smoke >&2
+          exit 1

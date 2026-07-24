@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Container image publishing: a `Dockerfile` (multi-stage uv build, non-root
+  runtime) and a `docker` job in the publish workflow that pushes
+  `ghcr.io/bobbyhyam/ultimate-brain-mcp` (`X.Y.Z`, `X.Y`, `latest`;
+  linux/amd64 + linux/arm64) on each release. CI builds the image and
+  smoke-tests streamable-http `initialize` on every PR.
+- `UB_TRANSPORT` env var to select the MCP transport (`stdio`, the default,
+  or `streamable-http`); the container defaults to `streamable-http` on
+  port 8000.
+
 ### Changed
 
 - `scripts/release.sh` now uses a PR-based flow: it rolls the CHANGELOG and
