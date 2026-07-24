@@ -15,6 +15,42 @@ jobs:
       - run: uv build
       - run: uv publish
 
+  docker:
+    # Publish the container image to GHCR alongside the PyPI release. Tags:
+    # X.Y.Z + X.Y + latest, matching the tag scheme of the pre-existing
+    # ghcr.io/bobbyhyam/ultimate-brain-mcp package (last pushed at 0.4.4).
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          # semver tags imply `latest` on the newest version by default.
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          # arm64 alongside amd64 so the image also runs on ARM hosts (e.g.
+          # Apple-silicon docker and Pi-class servers), emulated via QEMU.
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
   release-skill:
     # Build the .claude/skills/ub directory into a single ultimate-brain-mcp.skill
     # archive (zip, root-level SKILL.md + references/) and attach it to the
