@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable
 
 # Runtime stage: plain Python, no uv, non-root.
-FROM python:3.13-slim-bookworm
+FROM python:3.14-slim-bookworm
 
 RUN useradd --system --uid 10001 --create-home ub
 
