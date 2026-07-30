@@ -56,9 +56,7 @@ def test_security_hosts_enable_protection():
 
 
 def test_security_hosts_and_origins():
-    settings = resolve_transport_security(
-        "ultimate-brain-mcp:*", "http://ultimate-brain-mcp:*"
-    )
+    settings = resolve_transport_security("ultimate-brain-mcp:*", "http://ultimate-brain-mcp:*")
     assert settings is not None
     assert settings.allowed_origins == ["http://ultimate-brain-mcp:*"]
 
