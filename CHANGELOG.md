@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Streamable-http serving behind a proxy or MCP gateway: FastMCP bakes in a
+  localhost-only DNS-rebinding Host allowlist when the server object is
+  constructed, so any non-localhost `Host` header (for example a Docker
+  container name) was rejected with `421 Misdirected Request` regardless of
+  `UB_HOST`. New env vars `UB_ALLOWED_HOSTS` / `UB_ALLOWED_ORIGINS`
+  (comma-separated, `:*` port wildcard supported) replace that allowlist
+  while keeping the protection enabled; both unset preserves the previous
+  localhost-only behaviour. CI now smoke-tests a gateway-style `Host` and
+  asserts unlisted Hosts still get 421.
+
 ## [0.6.0] - 2026-07-24
 
 ### Added

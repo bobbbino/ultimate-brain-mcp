@@ -64,3 +64,42 @@ jobs:
           echo "server never answered initialize; container logs:" >&2
           docker logs ub-smoke >&2
           exit 1
+      # The default smoke test above sends Host: localhost:8000, which sits
+      # inside FastMCP's baked-in localhost allowlist — exactly why the 421
+      # regression this guards against shipped green. Serve with
+      # UB_ALLOWED_HOSTS and assert BOTH directions: a gateway-style Host is
+      # accepted, and an unlisted Host still gets 421 (allowlist replaces the
+      # default rather than extending it).
+      - name: Smoke test (gateway-style Host via UB_ALLOWED_HOSTS)
+        run: |
+          init_body='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
+          docker run -d --name ub-smoke-host -p 8001:8000 \
+            -e NOTION_INTEGRATION_SECRET=secret_dummy \
+            -e UB_TASKS_DS_ID=x -e UB_PROJECTS_DS_ID=x -e UB_NOTES_DS_ID=x \
+            -e UB_TAGS_DS_ID=x -e UB_GOALS_DS_ID=x \
+            -e UB_ALLOWED_HOSTS='ultimate-brain-mcp:*' \
+            ultimate-brain-mcp:ci
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /tmp/init-host.out -w '%{http_code}' -X POST http://localhost:8001/mcp \
+              -H 'Host: ultimate-brain-mcp:8000' \
+              -H 'Content-Type: application/json' \
+              -H 'Accept: application/json, text/event-stream' \
+              -d "$init_body" || true)
+            if [ "$code" = "200" ]; then
+              grep -q '"serverInfo"' /tmp/init-host.out
+              denied=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8001/mcp \
+                -H 'Content-Type: application/json' \
+                -H 'Accept: application/json, text/event-stream' \
+                -d "$init_body")
+              if [ "$denied" != "421" ]; then
+                echo "unlisted Host expected 421, got $denied" >&2
+                exit 1
+              fi
+              echo "gateway-style Host OK; unlisted Host correctly 421"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server never answered gateway-style-Host initialize; container logs:" >&2
+          docker logs ub-smoke-host >&2
+          exit 1
